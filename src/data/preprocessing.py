@@ -77,7 +77,7 @@ class DataPreprocesser:
         return src_padded, trg_input, trg_output
 
     def split_data(self, data, train_rate=0.9, val_rate=0.1):
-        """Split data into train, validation and test sets"""
+        """Split data into train, validation and tests sets"""
         train_size = int(len(data) * train_rate)
         val_size = int(len(data) * val_rate)
 
