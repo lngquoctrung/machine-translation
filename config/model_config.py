@@ -13,7 +13,6 @@ class ModelConfig:
     EMBEDDING_DIM = 64              # To save memory
     LSTM_UNITS = 128                # Hidden units
     ATTENTION_HEADS = 2             # Using multi-head for accuracy
-    DROPOUT_RATE = 0.3              # Avoid overfitting
 
     # Training
     BATCH_SIZE = 256                # Increase training speed
