@@ -67,6 +67,7 @@ class Config:
     MODEL_SAVE_PATH = str(root_dir / "models" / "saved_models")
     CHECKPOINT_PATH = str(root_dir / "models" / "checkpoints")
     TOKENIZER_PATH = str(root_dir / "models" / "tokenizers")
+    ASSETS_PATH = str(root_dir / "assets")
 
     @classmethod
     def to_dict(cls):
@@ -109,6 +110,7 @@ class Config:
             "model_save_path": cls.MODEL_SAVE_PATH,
             "checkpoint_path": cls.CHECKPOINT_PATH,
             "tokenizer_path": cls.TOKENIZER_PATH,
+            "assets_path": cls.ASSETS_PATH,
         }
 
     @classmethod

@@ -123,8 +123,8 @@ class DataPreprocessor:
     def prepare_sequences(self, data, max_len_src, max_len_trg):
         """Convert text to sequences with padding"""
         # Encode
-        src_sequences = self.tokenizer_src.texts_to_sequences(data['src'])
-        trg_sequences = self.tokenizer_trg.texts_to_sequences(data['trg'])
+        src_sequences = self.tokenizer_src.texts_to_sequences(data["src"])
+        trg_sequences = self.tokenizer_trg.texts_to_sequences(data["trg"])
 
         # Pad
         src_padded = pad_sequences(
@@ -142,7 +142,7 @@ class DataPreprocessor:
 
         # Create decoder input (shift by 1)
         trg_input = trg_padded
-        trg_output = np.array([seq[1:] for seq in trg_sequences])
+        trg_output = [seq[1:] for seq in trg_sequences]
         trg_output = pad_sequences(
             trg_output,
             maxlen=max_len_trg,
