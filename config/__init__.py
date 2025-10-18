@@ -1,3 +1,3 @@
-from .model_config import ModelConfig
+from .config import Config
 
-__all__ = ['ModelConfig']
+__all__ = ['Config']

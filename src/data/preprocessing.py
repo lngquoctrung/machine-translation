@@ -7,7 +7,7 @@ from collections import Counter
 
 from src.utils import setup_logger
 
-class DataPreprocesser:
+class DataPreprocessor:
     """
     Handle data preprocessing for machine translation
         - Filter rare words to reduce vocabulary size
@@ -15,13 +15,16 @@ class DataPreprocesser:
         - Tokenization and padding
     """
 
-    def __init__(self, max_vocab_src, max_vocab_trg, min_frequency=2, name_logger=__name__):
+    def __init__(self, max_vocab_src, max_vocab_trg, min_frequency=2, name_logger=__name__, filename_logger=None):
         self.max_vocab_src = max_vocab_src
         self.max_vocab_trg = max_vocab_trg
         self.min_frequency = min_frequency
         self.tokenizer_src = None
         self.tokenizer_trg = None
-        self.logger = setup_logger(name_logger)
+        self.logger = setup_logger(
+            name=name_logger,
+            log_file=filename_logger
+        )
 
     def load_data(self, src_path, trg_path, max_length_src=40, max_length_trg=50):
         """
@@ -39,21 +42,21 @@ class DataPreprocesser:
             trg_data = f.readlines()
 
         # Filter too long sentences
-        filterd_data = []
+        filtered_data = []
         for src_line, trg_line in zip(src_data, trg_data):
             src_words = src_line.strip().split()
             trg_words = trg_line.strip().split()
             if len(src_words) < max_length_src and len(trg_words) < max_length_trg:
-                filterd_data.append((src_line.strip(), trg_line.strip()))
+                filtered_data.append((src_line.strip(), trg_line.strip()))
 
-        self.logger.info(f"Filterd: {len(filterd_data)/len(src_data)} pairs kept")
-        self.logger.info(f"Memory save: {(1 - len(filterd_data)/len(src_data)) * 100:.1f}%")
+        self.logger.info(f"Filtered: {len(filtered_data)/len(src_data)} pairs kept")
+        self.logger.info(f"Memory save: {(1 - len(filtered_data)/len(src_data)) * 100:.1f}%")
 
         # Add START and END tokens to the source dataset
-        trg_processed = [f"START {pair[1].strip()} END" for pair in filterd_data]
+        trg_processed = [f"START {pair[1].strip()} END" for pair in filtered_data]
 
         return pd.DataFrame({
-            'src': [pair[0] for pair in filterd_data],
+            'src': [pair[0] for pair in filtered_data],
             'trg': trg_processed
         })
 
@@ -86,7 +89,7 @@ class DataPreprocesser:
 
         return filtered_texts
 
-    def build_tokenizer(self, data):
+    def build_tokenizers(self, data):
         """Build tokenizers for source and target datasets"""
         self.logger.info("Filtering rare words in source dataset...")
         src_filtered = self.filter_rare_words(
@@ -105,7 +108,7 @@ class DataPreprocesser:
             oov_token="<UNK>",
             filters=""
         )
-        self.tokenizer_src.fit_on_texts(data['src'])
+        self.tokenizer_src.fit_on_texts(src_filtered)
 
         # Target tokenizer
         self.tokenizer_trg = Tokenizer(
@@ -113,7 +116,7 @@ class DataPreprocesser:
             oov_token="<UNK>",
             filters=""
         )
-        self.tokenizer_trg.fit_on_texts(data['trg'])
+        self.tokenizer_trg.fit_on_texts(trg_filtered)
 
         return self.tokenizer_src, self.tokenizer_trg
 

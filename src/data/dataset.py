@@ -21,7 +21,7 @@ class TranslationDataset:
         dataset = dataset.batch(self.batch_size)
 
         if prefetch:
-            dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
+            dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
         return dataset
 

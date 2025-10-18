@@ -9,9 +9,12 @@ from src.utils.logger import setup_logger
 
 class BiLSTMAttentionModel:
     """BiLSTM with Multi-Head Attention for Machine Translation"""
-    def __init__(self, config, name_logger=__name__):
+    def __init__(self, config, name_logger=__name__, filename_logger=None):
         self.config = config
-        self.logger = setup_logger(name_logger)
+        self.logger = setup_logger(
+            name=name_logger,
+            log_file=filename_logger
+        )
         self.model = None
 
     def build(self, vocab_size_src, vocab_size_trg, max_len_src, max_len_trg):
@@ -20,10 +23,10 @@ class BiLSTMAttentionModel:
         encoder_input = Input(shape=(max_len_src,), name='encoder_input')
         encoder_embedding = Embedding(
             vocab_size_src,
-            self.config['embedding_dim'],
+            self.config["embedding_dim"],
             mask_zero=True,
             embeddings_initializer="glorot_uniform",
-            name='encoder_embedding'
+            name="encoder_embedding"
         )(encoder_input)
 
         # Layer Normalization and dropout to avoid overfitting
@@ -33,15 +36,15 @@ class BiLSTMAttentionModel:
         # Encoder BiLSTM
         encoder_bilstm = Bidirectional(
             LSTM(
-                self.config['lstm_units'],
+                self.config["lstm_units"],
                 dropout=0.2,
                 recurrent_dropout=0.1,
                 return_sequences=True,
                 return_state=True,
                 kernel_initializer="glorot_uniform",
-                name='encoder_lstm'
+                name="encoder_lstm"
             ),
-            name='encoder_bilstm'
+            name="encoder_bilstm"
         )(encoder_embedding)
 
         # Normalization
@@ -58,13 +61,13 @@ class BiLSTMAttentionModel:
         encoder_states = [h, c]
 
         # =============== DECODER ===============
-        decoder_input = Input(shape=(max_len_trg,), name='decoder_input')
+        decoder_input = Input(shape=(max_len_trg,), name="decoder_input")
         decoder_embedding = Embedding(
             vocab_size_trg,
-            self.config['embedding_dim'],
+            self.config["embedding_dim"],
             mask_zero=True,
             embeddings_initializer="glorot_uniform",
-            name='decoder_embedding'
+            name="decoder_embedding"
         )(decoder_input)
 
         # Normalization
@@ -73,13 +76,13 @@ class BiLSTMAttentionModel:
 
         # LSTM decoder
         decoder_lstm = LSTM(
-            self.config['lstm_units'] * 2,
+            self.config["lstm_units"] * 2,
             dropout=0.2,
             recurrent_dropout=0.1,
             return_sequences=True,
             return_state=True,
             kernel_initializer="glorot_uniform",
-            name='decoder_lstm'
+            name="decoder_lstm"
         )
         decoder_outputs, _, _ = decoder_lstm(
             decoder_embedding,
@@ -90,10 +93,10 @@ class BiLSTMAttentionModel:
 
         # Attention Layer
         attention_layer = MultiHeadAttention(
-            key_dim=self.config['lstm_dim'],
+            key_dim=self.config["lstm_units"],
             num_heads=self.config.get("attention_heads", 2),
             dropout=0.1,
-            name='attention_layer'
+            name="attention_layer"
         )
         attention_output = attention_layer(
             query=decoder_outputs,
@@ -121,10 +124,10 @@ class BiLSTMAttentionModel:
         # Dense layer
         decoder_dense = Dense(
             vocab_size_trg,
-            activation='softmax',
+            activation="softmax",
             dtype="float32",
             kernel_initializer="glorot_uniform",
-            name='decoder_dense'
+            name="decoder_dense"
         )
         decoder_outputs = decoder_dense(concat_output)
 
@@ -132,7 +135,7 @@ class BiLSTMAttentionModel:
         self.model = Model(
             inputs=[encoder_input, decoder_input],
             outputs=decoder_outputs,
-            name='bilstm_attention_model'
+            name="bilstm_attention_model"
         )
 
         return self.model
