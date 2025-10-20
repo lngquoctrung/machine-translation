@@ -70,8 +70,8 @@ def main(model_type='bilstm'):
 
     # Save tokenizers
     os.makedirs(config["tokenizer_path"], exist_ok=True)
-    save_tokenizer(tokenizer_src, f"{config["tokenizer_path"]}/tokenizer_src.pkl")
-    save_tokenizer(tokenizer_trg, f"{config["tokenizer_path"]}/tokenizer_trg.pkl")
+    save_tokenizer(tokenizer_src, f"{config["tokenizer_path"]}/tokenizer_en.pkl")
+    save_tokenizer(tokenizer_trg, f"{config["tokenizer_path"]}/tokenizer_vi.pkl")
 
     # Sequences
     src_train, trg_in_train, trg_out_train = preprocessor.prepare_sequences(

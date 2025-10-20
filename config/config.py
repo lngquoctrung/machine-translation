@@ -3,10 +3,7 @@ from pathlib import Path
 root_dir = Path(__file__).parent.parent.absolute()
 
 class Config:
-    # ==========================
-    # Training hyperparameters
-    # ==========================
-    BATCH_SIZE = 256                      # Increase training speed
+    BATCH_SIZE = 128                      # Increase training speed
     EPOCHS = 100
     VALIDATION_SPLIT = 0.1
 
@@ -18,14 +15,14 @@ class Config:
 
     # Learning rate schedule
     USE_LR_SCHEDULER = True              # Warmup + cosin decay
-    WARMUP_STEPS = 4000
+    WARMUP_STEPS = 8000
     TOTAL_STEPS = 100000
 
     # Early stopping
-    EARLY_STOPPING_PATIENCE = 5
+    EARLY_STOPPING_PATIENCE = 10
     REDUCE_LR_PATIENCE = 3
     REDUCE_LR_FACTOR = 0.5
-    MIN_LR = 1e-6
+    MIN_LR = 1e-7
 
     # Callbacks
     SAVE_BEST_ONLY = True
@@ -38,13 +35,13 @@ class Config:
     # ==========================
     # Configuration for BiLSTM Attention model
     # ==========================
-    MAX_VOCAB_SIZE_SRC = 25000           # Limit to save memory
-    MAX_VOCAB_SIZE_TRG = 20000           # Limit to save memory
-    MIN_WORD_FREQUENCY = 2               # Filter rare words
+    MAX_VOCAB_SIZE_SRC = 30000           # Limit to save memory
+    MAX_VOCAB_SIZE_TRG = 25000           # Limit to save memory
+    MIN_WORD_FREQUENCY = 1               # Filter rare words
 
     EMBEDDING_DIM = 64                   # To save memory
     LSTM_UNITS = 128                     # Hidden units
-    ATTENTION_HEADS = 2                  # Using multi-head for accuracy
+    ATTENTION_HEADS = 3                  # Using multi-head for accuracy
 
     MAX_LENGTH_SRC = 40                  # Limit the number of words in a source sequence
     MAX_LENGTH_TRG = 50                  # Limit the number of word in a target sequence

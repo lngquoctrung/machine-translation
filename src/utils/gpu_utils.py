@@ -38,12 +38,18 @@ class GPUMemoryManager:
             print("No GPU found, using CPU")
 
     @staticmethod
-    def enable_mixed_precision():
-        """Enable mixed precision training (FP16)"""
-        policy = tf.keras.mixed_precision.Policy('mixed_float16')
+    def enable_mixed_precision(precision='mixed_float16'):
+        """
+        Enable mixed precision training
+
+        Args:
+            precision: 'mixed_float16' (GPU) or 'mixed_bfloat16' (TPU)
+        """
+        policy = tf.keras.mixed_precision.Policy(precision)
         tf.keras.mixed_precision.set_global_policy(policy)
-        print("Mixed precision (FP16) enabled")
-        print(f"Compute: {policy.compute_dtype}, Variable: {policy.variable_dtype}")
+        print(f"Mixed precision enabled: {policy.name}")
+        print(f"Compute dtype: {policy.compute_dtype}")
+        print(f"Variable dtype: {policy.variable_dtype}")
 
     @staticmethod
     def clear_session():

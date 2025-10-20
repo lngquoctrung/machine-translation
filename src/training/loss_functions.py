@@ -29,6 +29,9 @@ class LabelSmoothingCrossEntropy(Loss):
         # Apply label smoothing
         y_smooth = y_true * (1 - self.smoothing) + (self.smoothing / vocab_size)
 
+        # Add epsilon for numerical stability
+        y_pred = tf.clip_by_value(y_pred, 1e-7, 1.0 - 1e-7)
+
         # Cross entropy
         loss = tf.keras.losses.categorical_crossentropy(
             y_smooth,
@@ -48,9 +51,13 @@ def get_loss_function(loss_type="label_smoothing", **kwargs):
     if loss_type == "label_smoothing":
         return LabelSmoothingCrossEntropy(
             smoothing=kwargs.get("smoothing", 0.1),
+            reduction="sum_over_batch_size"
         )
     elif loss_type == "sparse_categorical":
-        return tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False)
+        return tf.keras.losses.CategoricalCrossentropy(
+            from_logits=False,
+            reduction="sum_over_batch_size"
+        )
 
     else:
         raise ValueError(f"Unknown loss type: {loss_type}")
