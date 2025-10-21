@@ -59,7 +59,7 @@ class DataPreprocessor:
             'trg': trg_processed
         })
 
-    def filter_rare_words(self, texts, min_frequency=2):
+    def filter_rare_words(self, texts, min_frequency=1):
         """
         Filter rare words to reduce vocabulary size
 

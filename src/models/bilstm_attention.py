@@ -22,32 +22,36 @@ class BiLSTMAttentionModel:
         # =============== ENCODER ===============
         encoder_input = Input(
             shape=(max_len_src,),
-            name='encoder_input',
-            dtype = 'int32'
+            name="encoder_input",
+            dtype = "int32"
         )
 
         encoder_embedding = Embedding(
             vocab_size_src,
-            self.config["embedding_dim"],
+            self.config.EMBEDDING_DIM,
             mask_zero=True,
             embeddings_initializer="glorot_uniform",
-            dtype='float32',
+            dtype="float32",
             name="encoder_embedding"
         )(encoder_input)
 
         # Layer Normalization and dropout to avoid overfitting
         encoder_embedding = LayerNormalization(
-            epsilon=1e-6,
+            epsilon=self.config.LR_EPSILON,
             name="encoder_ln1"
         )(encoder_embedding)
-        encoder_embedding = Dropout(0.2)(encoder_embedding)
+
+        encoder_embedding = Dropout(
+            self.config.LAYER_DROPOUT,
+            name="encoder_dropout"
+        )(encoder_embedding)
 
         # Encoder BiLSTM
         encoder_bilstm = Bidirectional(
             LSTM(
-                self.config["lstm_units"],
-                dropout=0.0,
-                recurrent_dropout=0.0,
+                self.config.LSTM_UNITS,
+                dropout=self.config.LSTM_DROPOUT,
+                recurrent_dropout=self.config.LSTM_DROPOUT,
                 return_sequences=True,
                 return_state=True,
                 kernel_initializer="glorot_uniform",
@@ -79,7 +83,7 @@ class BiLSTMAttentionModel:
         )
         decoder_embedding = Embedding(
             vocab_size_trg,
-            self.config["embedding_dim"],
+            self.config.EMBEDDING_DIM,
             mask_zero=True,
             embeddings_initializer="glorot_uniform",
             dtype='float32',
@@ -87,14 +91,19 @@ class BiLSTMAttentionModel:
         )(decoder_input)
 
         # Normalization
-        decoder_embedding = LayerNormalization(name="decoder_ln1")(decoder_embedding)
-        decoder_embedding = Dropout(0.2)(decoder_embedding)
+        decoder_embedding = LayerNormalization(
+            name="decoder_ln1"
+        )(decoder_embedding)
+        decoder_embedding = Dropout(
+            self.config.LAYER_DROPOUT,
+            name="decoder_dropout"
+        )(decoder_embedding)
 
         # LSTM decoder
         decoder_lstm = LSTM(
-            self.config["lstm_units"] * 2,
-            dropout=0.0,
-            recurrent_dropout=0.0,
+            self.self.config.LSTM_UNITS * 2,
+            dropout=self.config.LSTM_DROPOUT,
+            recurrent_dropout=self.config.LSTM_DROPOUT,
             return_sequences=True,
             return_state=True,
             kernel_initializer="glorot_uniform",
@@ -105,13 +114,15 @@ class BiLSTMAttentionModel:
             initial_state=encoder_states
         )
         # Normalization
-        decoder_outputs = LayerNormalization(name="decoder_ln2")(decoder_outputs)
+        decoder_outputs = LayerNormalization(
+            name="decoder_ln2"
+        )(decoder_outputs)
 
         # Attention Layer
         attention_layer = MultiHeadAttention(
-            key_dim=self.config["lstm_units"],
-            num_heads=self.config.get("attention_heads", 2),
-            dropout=0.1,
+            key_dim=self.config.LSTM_UNITS,
+            num_heads=self.config.ATTENTION_HEADS,
+            dropout=self.config.ATTENTION_DROPOUT,
             name="attention_layer"
         )
         attention_output = attention_layer(
@@ -121,21 +132,28 @@ class BiLSTMAttentionModel:
         )
 
         # Normalization
-        attention_output = LayerNormalization(name="attention_ln")(attention_output)
+        attention_output = LayerNormalization(
+            name="attention_ln"
+        )(attention_output)
 
         # Residual connection (add and norm)
         decoder_outputs_residual = Add(name="residual_add")([
             decoder_outputs,
             attention_output
         ])
-        decoder_outputs_residual = LayerNormalization(name="residual_ln")(decoder_outputs_residual)
+        decoder_outputs_residual = LayerNormalization(
+            name="residual_ln"
+        )(decoder_outputs_residual)
 
         # Concatenate
         concat_output = concatenate([
             decoder_outputs_residual,
             attention_output
         ], name="concat_output")
-        concat_output = Dropout(0.4)(concat_output)
+        concat_output = Dropout(
+            self.config.LAYER_DROPOUT,
+            name="concat_dropout"
+        )(concat_output)
 
         # Dense layer
         decoder_dense = Dense(

@@ -6,45 +6,47 @@ class Config:
     BATCH_SIZE = 128                      # Increase training speed
     EPOCHS = 100
     VALIDATION_SPLIT = 0.1
+    LAYER_DROPOUT = 0.2
+    LSTM_DROPOUT = 0.2
+    ATTENTION_DROPOUT = 0.1
+    LN_EPSILON = 1e-6
 
     # Optimizer
     LEARNING_RATE = 0.001
     BETA_1 = 0.9
     BETA_2 = 0.98
-    EPSILON = 1e-9
+    OPTIMIZER_EPSILON = 1e-9
+    OPTIMIZER_DYNAMIC = True
+    OPTIMIZER_INITIAL_SCALE = 2**15
+    OPTIMIZER_DYNAMIC_GROWTH_STEPS = 2000
 
     # Learning rate schedule
     USE_LR_SCHEDULER = True              # Warmup + cosin decay
-    WARMUP_STEPS = 8000
+    WARMUP_STEPS = 4000
     TOTAL_STEPS = 100000
+    MIN_LR = 1e-7
 
     # Early stopping
     EARLY_STOPPING_PATIENCE = 10
     REDUCE_LR_PATIENCE = 3
     REDUCE_LR_FACTOR = 0.5
-    MIN_LR = 1e-7
 
     # Callbacks
     SAVE_BEST_ONLY = True
     MONITOR = "val_loss"
 
-    # Logging
-    LOG_DIR = str(root_dir / "logs")
-    TENSORBOARD_UPDATE_FREQ = "epoch"
-
     # ==========================
-    # Configuration for BiLSTM Attention model
+    # Configuration for models
     # ==========================
+    MAX_LENGTH_SRC = 40                  # Limit the number of words in a source sequence
+    MAX_LENGTH_TRG = 50                  # Limit the number of word in a target sequence
     MAX_VOCAB_SIZE_SRC = 30000           # Limit to save memory
     MAX_VOCAB_SIZE_TRG = 25000           # Limit to save memory
     MIN_WORD_FREQUENCY = 1               # Filter rare words
 
     EMBEDDING_DIM = 64                   # To save memory
     LSTM_UNITS = 128                     # Hidden units
-    ATTENTION_HEADS = 3                  # Using multi-head for accuracy
-
-    MAX_LENGTH_SRC = 40                  # Limit the number of words in a source sequence
-    MAX_LENGTH_TRG = 50                  # Limit the number of word in a target sequence
+    ATTENTION_HEADS = 5                  # Using multi-head for accuracy
 
     # GPU settings
     USE_MIXED_PRECISION = True           # Save memory, increase training speed
@@ -52,7 +54,7 @@ class Config:
     GPU_MEMORY_LIMIT = 15000             # Limit 15GB GPU to avoid out off memory
 
     # Accuracy improvements
-    LABEL_SMOOTHING = 0.1                # Decrease overconfidence
+    LABEL_SMOOTHING = 0.05               # Decrease overconfidence
     USE_LAYER_NORM = True                # Keep traning stably
 
     # Inference
@@ -61,53 +63,75 @@ class Config:
 
     # Paths
     DATA_PATH = str(root_dir / "data")
-    MODEL_SAVE_PATH = str(root_dir / "models" / "saved_models")
-    CHECKPOINT_PATH = str(root_dir / "models" / "checkpoints")
-    TOKENIZER_PATH = str(root_dir / "models" / "tokenizers")
+    ARTIFACT_PATH = str(root_dir / "artifacts")
     ASSETS_PATH = str(root_dir / "assets")
+    LOG_DIR = str(root_dir / "logs")
+    TENSORBOARD_UPDATE_FREQ = "epoch"
 
     @classmethod
     def to_dict(cls):
         """Convert config to dictionary"""
         return {
+            # Training
             "batch_size": cls.BATCH_SIZE,
             "epochs": cls.EPOCHS,
             "validation_split": cls.VALIDATION_SPLIT,
+
+            # Optimizer
             "learning_rate": cls.LEARNING_RATE,
             "beta_1": cls.BETA_1,
             "beta_2": cls.BETA_2,
-            "epsilon": cls.EPSILON,
+            "optimizer_epsilon": cls.OPTIMIZER_EPSILON,
+            "optimizer_dynamic": cls.OPTIMIZER_DYNAMIC,
+            "optimizer_initial_scale": cls.OPTIMIZER_INITIAL_SCALE,
+            "optimizer_dynamic_growth_steps": cls.OPTIMIZER_DYNAMIC_GROWTH_STEPS,
+
+            # Learning rate schedule
             "use_lr_scheduler": cls.USE_LR_SCHEDULER,
             "warmup_steps": cls.WARMUP_STEPS,
             "total_steps": cls.TOTAL_STEPS,
+            "min_lr": cls.MIN_LR,
+
+            # Early stopping
             "early_stopping_patience": cls.EARLY_STOPPING_PATIENCE,
             "reduce_lr_patience": cls.REDUCE_LR_PATIENCE,
             "reduce_lr_factor": cls.REDUCE_LR_FACTOR,
-            "min_lr": cls.MIN_LR,
+
+            # Callbacks
             "save_best_only": cls.SAVE_BEST_ONLY,
             "monitor": cls.MONITOR,
-            "log_dir": cls.LOG_DIR,
             "tensorboard_update_freq": cls.TENSORBOARD_UPDATE_FREQ,
+
+            # Vocabulary
             "max_vocab_size_src": cls.MAX_VOCAB_SIZE_SRC,
             "max_vocab_size_trg": cls.MAX_VOCAB_SIZE_TRG,
             "min_word_frequency": cls.MIN_WORD_FREQUENCY,
+
+            # Model parameters
             "embedding_dim": cls.EMBEDDING_DIM,
             "lstm_units": cls.LSTM_UNITS,
             "attention_heads": cls.ATTENTION_HEADS,
+            "layer_dropout": cls.LAYER_DROPOUT,
+            "lstm_dropout": cls.LSTM_DROPOUT,
+            "attention_dropout": cls.ATTENTION_DROPOUT,
+            "ln_epsilon": cls.LN_EPSILON,
+
+            # Sequence limits
             "max_length_src": cls.MAX_LENGTH_SRC,
             "max_length_trg": cls.MAX_LENGTH_TRG,
+
+            # GPU settings
             "use_mixed_precision": cls.USE_MIXED_PRECISION,
             "gpu_memory_growth": cls.GPU_MEMORY_GROWTH,
             "gpu_memory_limit": cls.GPU_MEMORY_LIMIT,
+
+            # Accuracy improvements
             "label_smoothing": cls.LABEL_SMOOTHING,
             "use_layer_norm": cls.USE_LAYER_NORM,
+
+            # Inference
             "beam_width": cls.BEAM_WIDTH,
             "use_beam_search": cls.USE_BEAM_SEARCH,
-            "data_path": cls.DATA_PATH,
-            "model_save_path": cls.MODEL_SAVE_PATH,
-            "checkpoint_path": cls.CHECKPOINT_PATH,
-            "tokenizer_path": cls.TOKENIZER_PATH,
-            "assets_path": cls.ASSETS_PATH,
         }
 
     @classmethod

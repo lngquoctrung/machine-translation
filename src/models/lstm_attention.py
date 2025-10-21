@@ -26,31 +26,36 @@ class LSTMAttentionModel:
         encoder_inputs = Input(
             shape=(max_len_src,),
             name="encoder_input",
-            dtype = 'int32'
+            dtype="int32"
         )
 
         # Embedding
         encoder_embedding = Embedding(
             vocab_size_src,
-            self.config["embedding_dim"],
+            self.config.EMBEDDING_DIM,
             mask_zero=True,
             embeddings_initializer="glorot_uniform",
-            dtype='float32',
+            dtype="float32",
             name="encoder_embedding"
         )(encoder_inputs)
 
         # Layer Normalization
         encoder_embedding = LayerNormalization(
-            epsilon=1e-6,
+            epsilon=self.config.LR_EPSILON,
             name="encoder_ln1"
         )(encoder_embedding)
-        encoder_embedding = Dropout(0.2)(encoder_embedding)
+
+        # Dropout
+        encoder_embedding = Dropout(
+            self.config.LAYER_DROPOUT,
+            name="encoder_dropout"
+        )(encoder_embedding)
 
         # LSTM Encoder
         encoder_lstm = LSTM(
-            self.config["lstm_units"],
-            dropout=0.0,
-            recurrent_dropout=0.0,
+            self.config.LSTM_UNITS,
+            dropout=self.config.LSTM_DROPOUT,
+            recurrent_dropout=self.config.LSTM_DROPOUT,
             return_sequences=True,
             return_state=True,
             kernel_initializer="glorot_uniform",
@@ -58,34 +63,43 @@ class LSTMAttentionModel:
         )
         encoder_outputs, h, c = encoder_lstm(encoder_embedding)
 
-        encoder_outputs = LayerNormalization(name="encoder_ln2")(encoder_outputs)
+        encoder_outputs = LayerNormalization(
+            name="encoder_ln2"
+        )(encoder_outputs)
         encoder_states = [h, c]
 
         # ========== DECODER ==========
         decoder_inputs = Input(
             shape=(max_len_trg,),
             name="decoder_input",
-            dtype = 'int32'
+            dtype="int32"
         )
 
         # Embedding
         decoder_embedding = Embedding(
             vocab_size_trg,
-            self.config["embedding_dim"],
+            self.config.EMBEDDING_DIM,
             mask_zero=True,
             embeddings_initializer="glorot_uniform",
-            dtype='float32',
+            dtype="float32",
             name="decoder_embedding"
         )(decoder_inputs)
 
-        decoder_embedding = LayerNormalization(name="decoder_ln1")(decoder_embedding)
-        decoder_embedding = Dropout(0.2)(decoder_embedding)
+        decoder_embedding = LayerNormalization(
+            name="decoder_ln1"
+        )(decoder_embedding)
+
+        # Dropout
+        decoder_embedding = Dropout(
+            self.config.LAYER_DROPOUT,
+            name="decoder_dropout"
+        )(decoder_embedding)
 
         # LSTM Decoder
         decoder_lstm = LSTM(
-            self.config["lstm_units"],
-            dropout=0.0,
-            recurrent_dropout=0.0,
+            self.config.LSTM_UNITS,
+            dropout=self.config.LSTM_DROPOUT,
+            recurrent_dropout=self.config.LSTM_DROPOUT,
             return_sequences=True,
             return_state=True,
             kernel_initializer="glorot_uniform",
@@ -96,13 +110,15 @@ class LSTMAttentionModel:
             initial_state=encoder_states
         )
 
-        decoder_outputs = LayerNormalization(name="decoder_ln2")(decoder_outputs)
+        decoder_outputs = LayerNormalization(
+            name="decoder_ln2"
+        )(decoder_outputs)
 
         # ========== MULTI-HEAD ATTENTION ==========
         attention_layer = MultiHeadAttention(
-            key_dim=self.config['lstm_units'],
-            num_heads=self.config.get("attention_heads", 2),
-            dropout=0.1,
+            key_dim=self.config.LSTM_UNITS,
+            num_heads=self.config.ATTENTION_HEADS,
+            dropout=self.config.ATTENTION_DROPOUT,
             name="attention_layer"
         )
 
@@ -112,16 +128,18 @@ class LSTMAttentionModel:
             key=encoder_outputs
         )
 
-        attention_output = LayerNormalization(name="attention_ln")(attention_output)
+        attention_output = LayerNormalization(
+            name="attention_ln"
+        )(attention_output)
 
         # ========== RESIDUAL CONNECTION ==========
         decoder_outputs_residual = Add(name="residual_add")([
             decoder_outputs,
             attention_output
         ])
-        decoder_outputs_residual = LayerNormalization(name="residual_ln")(
-            decoder_outputs_residual
-        )
+        decoder_outputs_residual = LayerNormalization(
+            name="residual_ln"
+        )(decoder_outputs_residual)
 
         # Concatenate
         concat_output = concatenate([
@@ -129,7 +147,10 @@ class LSTMAttentionModel:
             attention_output
         ], name="concat_output")
 
-        concat_output = Dropout(0.4)(concat_output)
+        concat_output = Dropout(
+            self.config.LAYER_DROPOUT,
+            name="concat_dropout"
+        )(concat_output)
 
         # ========== OUTPUT LAYER ==========
         outputs = Dense(

@@ -1,7 +1,7 @@
 from .loss_functions import LabelSmoothingCrossEntropy, get_loss_function
 from .trainer import ModelTrainer
 from .schedulers import WarmupCosineDecay, get_lr_schedule
-from .callbacks import MemoryCallBack, TimeHistoryCallBack
+from .callbacks import MemoryCallBack, TimeHistoryCallBack, SaveHistoryCallback, PeriodicCheckpoint
 
 __all__ = [
     "LabelSmoothingCrossEntropy",
@@ -10,5 +10,7 @@ __all__ = [
     "WarmupCosineDecay",
     "get_lr_schedule",
     "MemoryCallBack",
-    "TimeHistoryCallBack"
+    "TimeHistoryCallBack",
+    "SaveHistoryCallback", 
+    "PeriodicCheckpoint"
 ]
