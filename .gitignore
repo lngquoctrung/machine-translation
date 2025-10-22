@@ -1,6 +1,7 @@
 .venv/
 .idea/
 models/
+**/__pycache__
 
 README.md
 machine-translation.zip

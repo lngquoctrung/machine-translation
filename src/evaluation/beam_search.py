@@ -1,28 +1,50 @@
 import numpy as np
+import re
+import contractions
+import string  # ← THÊM IMPORT
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-
 
 class BeamSearchDecoder:
     """
-    Beam Search Decoder
+    Beam Search Decoder with contraction expansion and punctuation removal
     """
-
-    def __init__(self, model, tokenizer_src, tokenizer_trg, max_len_src, max_len_trg, beam_width=5):
+    
+    def __init__(self, model, tokenizer_src, tokenizer_trg, max_len_src, max_len_trg, 
+                 beam_width=5, expand_contractions=True, remove_punctuation=True):
         self.model = model
         self.tokenizer_src = tokenizer_src
         self.tokenizer_trg = tokenizer_trg
         self.max_len_src = max_len_src
         self.max_len_trg = max_len_trg
         self.beam_width = beam_width
-
+        self.expand_contractions = expand_contractions
+        self.remove_punctuation = remove_punctuation
+        
         self.start_token = tokenizer_trg.word_index.get("start", 1)
         self.end_token = tokenizer_trg.word_index.get("end", 2)
-
+    
     def preprocess(self, text: str) -> np.ndarray:
-        """Preprocess input text"""
+        """
+        Preprocess input text
+        """
+        if self.expand_contractions:
+            text = contractions.fix(text)  # i'd -> i would
+        
+        # Remove punctuation
+        if self.remove_punctuation:
+            translator = str.maketrans('', '', string.punctuation)
+            text = text.translate(translator)
+        
+        # Lowercase
         text = text.lower().strip()
+        
+        # Remove extra spaces
+        text = ' '.join(text.split())
+        
+        # Tokenize and pad
         seq = self.tokenizer_src.texts_to_sequences([text])
         padded = pad_sequences(seq, maxlen=self.max_len_src, padding='post')
+        
         return padded
 
     def decode_greedy(self, input_seq: np.ndarray) -> str:

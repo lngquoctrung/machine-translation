@@ -92,8 +92,10 @@ class ModelTrainer:
                 self.logger.info("No checkpoint directory found. Starting from scratch.")
                 return
             # Get filename of checkpoints in directory
-            checkpoints = [f for f in os.listdir(checkpoint_dir) 
-                          if f.startswith("checkpoint_epoch_") and f.endswith(".h5")]
+            checkpoints = [
+                f for f in os.listdir(checkpoint_dir) 
+                if f.startswith("checkpoint_epoch_") and f.endswith(".keras")
+            ]
             
             if not checkpoints:
                 self.logger.info("No checkpoint found. Starting from scratch.")
@@ -105,7 +107,14 @@ class ModelTrainer:
         
         if os.path.exists(checkpoint_path):
             self.logger.info(f"Loading checkpoint: {checkpoint_path}")
-            self.model = tf.keras.models.load_model(checkpoint_path)
+
+            from .loss_functions import LabelSmoothingCrossEntropy
+            self.model = tf.keras.models.load_model(
+                checkpoint_path,
+                custom_objects={
+                    'LabelSmoothingCrossEntropy': LabelSmoothingCrossEntropy
+                }
+            )
             
             # Get epoch number from filename
             match = re.search(r'epoch_(\d+)', checkpoint_path)
@@ -140,7 +149,7 @@ class ModelTrainer:
             ModelCheckpoint(
                 filepath=os.path.join(
                     checkpoint_path,
-                    "best_model.h5"
+                    "best_model.keras"
                 ),
                 monitor=self.config.MONITOR,
                 save_best_only=self.config.SAVE_BEST_ONLY,
@@ -149,7 +158,7 @@ class ModelTrainer:
             PeriodicCheckpoint(
                 filepath=os.path.join(
                     checkpoint_path,
-                    "checkpoint_epoch_{epoch:03d}.h5"
+                    "checkpoint_epoch_{epoch:03d}.keras"
                 ),
                 save_every_n_epochs=10
             ),

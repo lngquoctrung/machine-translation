@@ -22,12 +22,12 @@ class Config:
 
     # Learning rate schedule
     USE_LR_SCHEDULER = True              # Warmup + cosin decay
-    WARMUP_STEPS = 4000
+    WARMUP_STEPS = 6000
     TOTAL_STEPS = 100000
     MIN_LR = 1e-7
 
     # Early stopping
-    EARLY_STOPPING_PATIENCE = 10
+    EARLY_STOPPING_PATIENCE = 5
     REDUCE_LR_PATIENCE = 3
     REDUCE_LR_FACTOR = 0.5
 

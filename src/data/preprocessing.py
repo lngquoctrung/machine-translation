@@ -1,34 +1,65 @@
 import pandas as pd
-
+import contractions
+import string
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.utils import pad_sequences
 from collections import Counter
-
 from src.utils import setup_logger
 
 class DataPreprocessor:
     """
     Handle data preprocessing for machine translation
-        - Filter rare words to reduce vocabulary size
-        - Filter long sentences to save memory
-        - Tokenization and padding
+    - Expand contractions (i'd -> i would)
+    - Remove punctuation to match training data format
+    - Filter rare words to reduce vocabulary size
+    - Filter long sentences to save memory
+    - Tokenization and padding
     """
-
-    def __init__(self, max_vocab_src, max_vocab_trg, min_frequency=2, name_logger=__name__, filename_logger=None):
+    
+    def __init__(self, max_vocab_src, max_vocab_trg, min_frequency=2, 
+                 expand_contractions=True, remove_punctuation=True, 
+                 name_logger=__name__, filename_logger=None):
         self.max_vocab_src = max_vocab_src
         self.max_vocab_trg = max_vocab_trg
         self.min_frequency = min_frequency
+        self.expand_contractions = expand_contractions
+        self.remove_punctuation = remove_punctuation 
         self.tokenizer_src = None
         self.tokenizer_trg = None
         self.logger = setup_logger(
             name=name_logger,
             log_file=filename_logger
         )
-
+    
+    def clean_text(self, text: str, is_source=True) -> str:
+        """
+        Clean and normalize text
+        
+        Args:
+            text: Input text string
+            is_source: True if English (source), False if Vietnamese (target)
+        """
+        # Expand contractions for English only
+        if is_source and self.expand_contractions:
+            text = contractions.fix(text)  # i'd -> i would
+        
+        # Remove punctuation
+        if self.remove_punctuation:
+            translator = str.maketrans('', '', string.punctuation)
+            text = text.translate(translator)
+        
+        # Lowercase
+        text = text.lower().strip()
+        
+        # Remove extra spaces
+        text = ' '.join(text.split())
+        
+        return text
+    
     def load_data(self, src_path, trg_path, max_length_src=40, max_length_trg=50):
         """
-        Load source and targe datasets and filter by lenght
-
+        Load source and target datasets and filter by length
+        
         Parameters:
             src_path: path to source dataset
             trg_path: path to target dataset
@@ -37,23 +68,29 @@ class DataPreprocessor:
         """
         with open(src_path, 'r', encoding='utf-8') as f:
             src_data = f.readlines()
+        
         with open(trg_path, 'r', encoding='utf-8') as f:
             trg_data = f.readlines()
-
+        
+        # Expand contractions khi load
+        self.logger.info("Cleaning and expanding contractions in source data...")
+        src_cleaned = [self.clean_text(line, is_source=True) for line in src_data]
+        
         # Filter too long sentences
         filtered_data = []
-        for src_line, trg_line in zip(src_data, trg_data):
-            src_words = src_line.strip().split()
-            trg_words = trg_line.strip().split()
+        for src_line, trg_line in zip(src_cleaned, trg_data):
+            src_words = src_line.split()
+            trg_words = trg_line.split()
+            
             if len(src_words) < max_length_src and len(trg_words) < max_length_trg:
-                filtered_data.append((src_line.strip(), trg_line.strip()))
-
-        self.logger.info(f"Filtered: {len(filtered_data)/len(src_data)} pairs kept")
-        self.logger.info(f"Memory save: {(1 - len(filtered_data)/len(src_data)) * 100:.1f}%")
-
-        # Add START and END tokens to the source dataset
+                filtered_data.append((src_line, trg_line))
+        
+        self.logger.info(f"Filtered: {len(filtered_data)/len(src_data):.2%} pairs kept")
+        self.logger.info(f"Memory saved: {(1 - len(filtered_data)/len(src_data)) * 100:.1f}%")
+        
+        # Add START and END tokens to target dataset
         trg_processed = [f"START {pair[1].strip()} END" for pair in filtered_data]
-
+        
         return pd.DataFrame({
             'src': [pair[0] for pair in filtered_data],
             'trg': trg_processed

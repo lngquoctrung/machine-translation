@@ -41,7 +41,7 @@ class LSTMAttentionModel:
 
         # Layer Normalization
         encoder_embedding = LayerNormalization(
-            epsilon=self.config.LR_EPSILON,
+            epsilon=self.config.LN_EPSILON,
             name="encoder_ln1"
         )(encoder_embedding)
 

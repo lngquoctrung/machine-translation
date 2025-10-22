@@ -37,7 +37,7 @@ class BiLSTMAttentionModel:
 
         # Layer Normalization and dropout to avoid overfitting
         encoder_embedding = LayerNormalization(
-            epsilon=self.config.LR_EPSILON,
+            epsilon=self.config.LN_EPSILON,
             name="encoder_ln1"
         )(encoder_embedding)
 
@@ -101,7 +101,7 @@ class BiLSTMAttentionModel:
 
         # LSTM decoder
         decoder_lstm = LSTM(
-            self.self.config.LSTM_UNITS * 2,
+            self.config.LSTM_UNITS * 2,
             dropout=self.config.LSTM_DROPOUT,
             recurrent_dropout=self.config.LSTM_DROPOUT,
             return_sequences=True,
