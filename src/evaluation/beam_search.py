@@ -7,9 +7,12 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 class BeamSearchDecoder:
     """
     Beam Search Decoder with contraction expansion and punctuation removal
+    - Detect proper names (capitalized words)
+    - Replace with placeholders before translation
+    - Restore after decoding
     """
     
-    def __init__(self, model, tokenizer_src, tokenizer_trg, max_len_src, max_len_trg, 
+    def __init__(self, model, tokenizer_src, tokenizer_trg, max_len_src, max_len_trg,
                  beam_width=5, expand_contractions=True, remove_punctuation=True):
         self.model = model
         self.tokenizer_src = tokenizer_src
@@ -19,142 +22,170 @@ class BeamSearchDecoder:
         self.beam_width = beam_width
         self.expand_contractions = expand_contractions
         self.remove_punctuation = remove_punctuation
-        
         self.start_token = tokenizer_trg.word_index.get("start", 1)
         self.end_token = tokenizer_trg.word_index.get("end", 2)
-    
-    def preprocess(self, text: str) -> np.ndarray:
+
+    def _extract_proper_names(self, text: str) -> dict:
         """
-        Preprocess input text
+        Extract proper name and check if it is in vocabulary
         """
+        # Expand contractions trước
         if self.expand_contractions:
-            text = contractions.fix(text)  # i'd -> i would
-        
+            text = contractions.fix(text)
+
         # Remove punctuation
+        clean_text = text.translate(str.maketrans("", "", string.punctuation))
+        words = clean_text.split()
+
+        proper_names = {}
+
+        for i, word in enumerate(words):
+            # Check if capitalized
+            if word and word[0].isupper():
+                # Check if in vocabulary
+                word_lower = word.lower()
+                token_id = self.tokenizer_src.word_index.get(word_lower, 0)
+
+                if token_id == 0:
+                    proper_names[i] = word
+
+        return proper_names, words
+
+    def preprocess(self, text: str) -> np.ndarray:
+        """Preprocess input text"""
+        if self.expand_contractions:
+            text = contractions.fix(text)
+
         if self.remove_punctuation:
-            translator = str.maketrans('', '', string.punctuation)
-            text = text.translate(translator)
-        
-        # Lowercase
-        text = text.lower().strip()
-        
-        # Remove extra spaces
-        text = ' '.join(text.split())
-        
-        # Tokenize and pad
-        seq = self.tokenizer_src.texts_to_sequences([text])
-        padded = pad_sequences(seq, maxlen=self.max_len_src, padding='post')
-        
+            text = text.translate(str.maketrans("", "", string.punctuation))
+
+        text = text.lower()
+
+        sequences = self.tokenizer_src.texts_to_sequences([text])
+        padded = pad_sequences(
+            sequences,
+            maxlen=self.max_len_src,
+            padding="post",
+            truncating="post"
+        )
+
         return padded
 
-    def decode_greedy(self, input_seq: np.ndarray) -> str:
-        """Greedy decoding"""
-        decoder_input = np.zeros((1, self.max_len_trg))
-        decoder_input[0, 0] = self.start_token
+    def decode_greedy(self, text: str) -> str:
+        """Greedy decoding với copy-through"""
+        # Extract OOV proper names
+        proper_names, input_words = self._extract_proper_names(text)
 
-        output_sentence = []
+        # Preprocess
+        src_seq = self.preprocess(text)
+
+        # Initialize
+        target_seq = np.zeros((1, self.max_len_trg))
+        target_seq[0, 0] = self.start_token
+
+        translated_tokens = []
 
         for i in range(1, self.max_len_trg):
-            predictions = self.model.predict(
-                [input_seq, decoder_input],
-                verbose=0
-            )
-
-            predicted_id = np.argmax(predictions[0, i - 1, :])
+            predictions = self.model.predict([src_seq, target_seq], verbose=0)
+            predicted_id = np.argmax(predictions[0, i-1, :])
 
             if predicted_id == self.end_token or predicted_id == 0:
                 break
 
-            predicted_word = self.tokenizer_trg.index_word.get(predicted_id, '')
-            if predicted_word and predicted_word not in ['start', 'end']:
-                output_sentence.append(predicted_word)
+            translated_tokens.append(predicted_id)
+            target_seq[0, i] = predicted_id
 
-            decoder_input[0, i] = predicted_id
+        # Convert to text
+        translated_text = self._tokens_to_text(translated_tokens)
 
-        return ' '.join(output_sentence)
-
-    def decode_beam_search(self, input_seq: np.ndarray) -> tuple:
-        """Beam search decoding"""
-        # Initialize beams: (sequence, score)
-        beams = [(np.array([self.start_token]), 0.0)]
-        completed_beams = []
-
-        for step in range(self.max_len_trg - 1):
-            all_candidates = []
-
-            for sequence, score in beams:
-                # Tạo decoder input từ sequence
-                decoder_input = np.zeros((1, self.max_len_trg))
-                for idx, token in enumerate(sequence):
-                    decoder_input[0, idx] = token
-
-                # Predict
-                predictions = self.model.predict([input_seq, decoder_input], verbose=0)
-                token_probs = predictions[0, len(sequence) - 1, :]  # Probabilities for next token
-
-                # Get top-k candidates
-                top_k_indices = np.argsort(token_probs)[-self.beam_width:]
-
-                for token_id in top_k_indices:
-                    # Calculate new score (log probability)
-                    token_prob = token_probs[token_id]
-                    new_score = score + np.log(token_prob + 1e-10)
-
-                    # Create new sequence
-                    new_sequence = np.append(sequence, token_id)
-
-                    # Check if completed
-                    if token_id == self.end_token or len(new_sequence) >= self.max_len_trg:
-                        completed_beams.append((new_sequence, new_score))
-                    else:
-                        all_candidates.append((new_sequence, new_score))
-
-            # Sort by score and keep top-k beams
-            if not all_candidates:
-                break
-
-            beams = sorted(all_candidates, key=lambda x: x[1], reverse=True)[:self.beam_width]
-
-        # Add remaining beams to completed
-        completed_beams.extend(beams)
-
-        # Sort by normalized score (divide by length to avoid favoring short sequences)
-        completed_beams = sorted(
-            completed_beams,
-            key=lambda x: x[1] / len(x[0]),
-            reverse=True
+        # Copy-through OOV proper names
+        translated_text = self._copy_through_names(
+            translated_text, 
+            proper_names, 
+            input_words
         )
 
-        # Convert sequences to text
-        results = []
-        for sequence, score in completed_beams[:self.beam_width]:
-            words = []
-            for token_id in sequence:
-                if token_id == self.start_token or token_id == self.end_token:
+        return translated_text
+
+    def decode_beam_search(self, text: str) -> str:
+        """Beam search with copy-through"""
+        proper_names, input_words = self._extract_proper_names(text)
+
+        src_seq = self.preprocess(text)
+
+        beams = [(0.0, [self.start_token])]
+
+        for step in range(self.max_len_trg - 1):
+            new_beams = []
+
+            for score, seq in beams:
+                if seq[-1] == self.end_token:
+                    new_beams.append((score, seq))
                     continue
-                word = self.tokenizer_trg.index_word.get(token_id, '')
-                if word:
+
+                target_seq = np.zeros((1, self.max_len_trg))
+                for i, token_id in enumerate(seq):
+                    if i < self.max_len_trg:
+                        target_seq[0, i] = token_id
+
+                predictions = self.model.predict([src_seq, target_seq], verbose=0)
+                next_token_probs = predictions[0, len(seq)-1, :]
+
+                top_indices = np.argsort(next_token_probs)[-self.beam_width:]
+
+                for idx in top_indices:
+                    if idx == 0:
+                        continue
+                    new_score = score - np.log(next_token_probs[idx] + 1e-10)
+                    new_seq = seq + [idx]
+                    new_beams.append((new_score, new_seq))
+
+            beams = sorted(new_beams, key=lambda x: x[0])[:self.beam_width]
+
+            if all(seq[-1] == self.end_token for _, seq in beams):
+                break
+
+        best_seq = beams[0][1][1:]
+        if best_seq and best_seq[-1] == self.end_token:
+            best_seq = best_seq[:-1]
+
+        translated_text = self._tokens_to_text(best_seq)
+        translated_text = self._copy_through_names(
+            translated_text,
+            proper_names,
+            input_words
+        )
+
+        return translated_text
+
+    def _tokens_to_text(self, tokens: list) -> str:
+        """Convert tokens to text"""
+        words = []
+        index_word = {v: k for k, v in self.tokenizer_trg.word_index.items()}
+
+        for token_id in tokens:
+            if token_id in index_word:
+                word = index_word[token_id]
+                if word not in ["start", "end"]:
                     words.append(word)
 
-            translation = ' '.join(words)
-            if translation:
-                results.append((translation, score / len(sequence)))
+        return " ".join(words)
 
-        best_translation = results[0][0] if results else ""
-        return best_translation, results
-
-    def translate(self, text: str, use_beam_search: bool = False) -> str:
+    def _copy_through_names(self, translated_text: str, proper_names: dict, 
+                            input_words: list) -> str:
         """
-        Main translation method
-
-        Args:
-            text: Input English text
-            use_beam_search: Use beam search (True) or greedy (False)
+        Copy-through mechanism
         """
-        input_seq = self.preprocess(text)
+        if not proper_names:
+            return translated_text
 
-        if use_beam_search:
-            translation, _ = self.decode_beam_search(input_seq)
-            return translation
-        else:
-            return self.decode_greedy(input_seq)
+        # Split và tìm <UNK>
+        output_words = translated_text.split()
+        sorted_names = [proper_names[pos] for pos in sorted(proper_names.keys())]
+        name_idx = 0
+        for i, word in enumerate(output_words):
+            if word == "<UNK>" and name_idx < len(sorted_names):
+                output_words[i] = sorted_names[name_idx]
+                name_idx += 1
+
+        return " ".join(output_words)

@@ -1,0 +1,13 @@
+name: Deploy dashboard project to VPS
+
+on:
+    push:
+        branches:
+            - production
+
+jobs:
+    setup:
+        name: Connect to VPS
+        runs-on: ubuntu-latest
+        
+    

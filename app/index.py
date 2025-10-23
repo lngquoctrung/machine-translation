@@ -3,7 +3,6 @@ import sys
 import gradio as gr
 import tensorflow as tf
 from pathlib import Path
-from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 root_dir = str(Path(__file__).parent.parent.absolute())
 if not root_dir in sys.path:
@@ -14,75 +13,50 @@ from src.evaluation.metrics import BLEUScore
 from src.utils import load_tokenizer
 from src.evaluation.beam_search import BeamSearchDecoder
 
-
 class TranslationApp:
     """Gradio translation application"""
+
     def __init__(self, model_path: str, tokenizer_path: str, config: dict):
         print("Loading model...")
         self.model = tf.keras.models.load_model(model_path, compile=False)
-
-        self.tokenizer_src = load_tokenizer(f"{tokenizer_path}/tokenizer_src.pkl")
-        self.tokenizer_trg = load_tokenizer(f"{tokenizer_path}/tokenizer_trg.pkl")
-
+        self.tokenizer_src = load_tokenizer(f"{tokenizer_path}/tokenizer_en.pkl")
+        self.tokenizer_trg = load_tokenizer(f"{tokenizer_path}/tokenizer_vi.pkl")
         self.config = config
         self.bleu_scorer = BLEUScore()
         self.history = []
-
         self.decoder = BeamSearchDecoder(
             self.model,
             self.tokenizer_src,
             self.tokenizer_trg,
-            config['max_length_src'],
-            config['max_length_trg'],
-            beam_width=config.get('beam_width', 5)
+            config.MAX_LENGTH_SRC,
+            config.MAX_LENGTH_TRG,
+            beam_width=config.BEAM_WIDTH
         )
-
         print("Model loaded!")
 
-    def translate(self, text: str, use_beam_search: bool = False, beam_width: int = 5, reference: str = "") -> tuple:
+    def translate(self, text: str, reference: str = "") -> tuple:
         """Main translation function"""
         if not text.strip():
-            return "", "Please enter text", ""
+            return "", "Please enter text to translate"
 
         start_time = time.time()
-
-        if use_beam_search:
-            # Update beam width
-            self.decoder.beam_width = beam_width
-            translation, candidates = self.decoder.decode_beam_search(
-                self.decoder.preprocess(text)
-            )
-            method = f"Beam Search (k={beam_width})"
-
-            # Format candidates
-            candidates_text = "**Alternative translations:**\n\n"
-            for i, (trans, score) in enumerate(candidates[:5], 1):
-                candidates_text += f"{i}. {trans} (score: {score:.2f})\n"
-        else:
-            translation = self.decoder.decode_greedy(
-                self.decoder.preprocess(text)
-            )
-            method = "Greedy Decoding"
-            candidates_text = ""
-
+        translation = self.decoder.decode_greedy(text)
+        method = "Greedy Decoding"
         time_taken = time.time() - start_time
 
-        # BLEU score
         bleu_info = ""
         if reference.strip():
             bleu = self.bleu_scorer.compute(reference.lower(), translation.lower())
-            bleu_info = f"\nBLEU Score: **{bleu:.2f}**"
+            bleu_info = f"\n- **BLEU Score:** {bleu:.2f}"
 
-        # Info
         info = f"""
             **Translation Info:**
-            - Method: {method}
-            - Time: {time_taken:.3f}s
-            - Input: {len(text.split())} words
-            - Output: {len(translation.split())} words{bleu_info}
+            - **Method:** {method}
+            - **Time:** {time_taken:.2f}s
+            - **Input:** {len(text.split())} words
+            - **Output:** {len(translation.split())} words{bleu_info}
         """.strip()
 
-        # History
         self.history.append({
             'input': text,
             'output': translation,
@@ -90,18 +64,19 @@ class TranslationApp:
             'time': time_taken
         })
 
-        return translation, info, candidates_text
+        return translation, info
+
     def get_history(self) -> str:
         """Get translation history"""
         if not self.history:
-            return "No history yet."
+            return "No translation history yet."
 
         table = "| # | Input | Translation | Time |\n"
         table += "|---|-------|-------------|------|\n"
 
         for i, item in enumerate(reversed(self.history[-10:]), 1):
-            inp = item['input'][:30] + "..." if len(item['input']) > 30 else item['input']
-            out = item['output'][:30] + "..." if len(item['output']) > 30 else item['output']
+            inp = item['input'][:40] + "..." if len(item['input']) > 40 else item['input']
+            out = item['output'][:40] + "..." if len(item['output']) > 40 else item['output']
             table += f"| {i} | {inp} | {out} | {item['time']:.2f}s |\n"
 
         return table
@@ -121,78 +96,130 @@ class TranslationApp:
             ["Thank you for your help.", ""],
         ]
 
-        with gr.Blocks(title="Translation", theme=gr.themes.Soft()) as demo:
+        # Minimal CSS - chỉ font
+        custom_css = """
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        }
+        """
+
+        with gr.Blocks(
+            title="English-Vietnamese Translation", 
+            theme=gr.themes.Soft(
+                primary_hue="purple",
+                secondary_hue="blue"
+            ),
+            css=custom_css
+        ) as demo:
+
             gr.Markdown("""
             # English to Vietnamese Translation
+            ## BiLSTM + Multi-Head Attention Model
+            """)
 
-            BiLSTM + Multi-Head Attention Model
+            # Pure Markdown Disclaimer - NO HTML
+            gr.Markdown("""
+                > ### Experimental Project Notice
+                > 
+                > **This is an experimental research project.** The model has the following limitations:
+                > 
+                > - Works best with **short, simple sentences** (less than 15 words)
+                > - May struggle with **complex sentence structures**
+                > - **Limited vocabulary** (30k English, 5k Vietnamese words)
+                > - Proper names may not translate correctly (uses copy-through mechanism)
+                > - Not suitable for production use
             """)
 
             with gr.Row():
-                with gr.Column():
+                with gr.Column(scale=1):
                     gr.Markdown("### Input")
+
                     input_text = gr.Textbox(
                         label="English Text",
-                        placeholder="Enter English text...",
-                        lines=5
+                        placeholder="Enter English text here... (Keep it short and simple for best results)",
+                        lines=6,
+                        max_lines=10
                     )
+
                     reference_text = gr.Textbox(
-                        label="Reference (Optional - for BLEU)",
-                        placeholder="Vietnamese reference...",
+                        label="Reference Translation (Optional - for BLEU score)",
+                        placeholder="Vietnamese reference translation...",
                         lines=3
                     )
-                    translate_btn = gr.Button("Translate", variant="primary")
 
-                with gr.Column():
+                    translate_btn = gr.Button("🚀 Translate", variant="primary", size="lg")
+
+                with gr.Column(scale=1):
                     gr.Markdown("### Output")
+
                     output_text = gr.Textbox(
                         label="Vietnamese Translation",
-                        lines=5
+                        lines=6,
+                        max_lines=10,
+                        interactive=False
                     )
-                    info_text = gr.Markdown()
-                    candidates_text = gr.Markdown()
 
-            gr.Markdown("### Examples")
+                    info_text = gr.Markdown()
+
+            gr.Markdown("---")
+            gr.Markdown("### Example Sentences")
+
             gr.Examples(
                 examples=examples,
                 inputs=[input_text, reference_text],
-                outputs=[output_text, info_text, candidates_text],
-                fn=self.translate
+                outputs=[output_text, info_text],
+                fn=self.translate,
+                cache_examples=False
             )
 
-            with gr.Accordion("History", open=False):
+            with gr.Accordion("Translation History", open=False):
                 history_table = gr.Markdown()
                 with gr.Row():
-                    refresh_btn = gr.Button("Refresh")
-                    clear_btn = gr.Button("Clear")
+                    refresh_btn = gr.Button("Refresh", size="sm")
+                    clear_btn = gr.Button("Clear", size="sm", variant="secondary")
 
                 refresh_btn.click(self.get_history, outputs=history_table)
                 clear_btn.click(self.clear_history, outputs=history_table)
 
+            gr.Markdown("---")
+
+            # Technical details - pure markdown
+            gr.Markdown("""
+                ### Technical Details
+
+                **Model Architecture:** BiLSTM Encoder + Multi-Head Attention + LSTM Decoder
+
+                **Features:** Label Smoothing • Layer Normalization • Mixed Precision Training
+
+                **Dataset:** TED Talks (146k sentence pairs) | **Vocab:** 30k EN / 25k VI
+
+                **Training:** Warmup + Cosine Decay LR Schedule | Adam Optimizer
+            """)
+
             gr.Markdown("""
                 ---
-                **Model:** BiLSTM + Multi-Head Attention  
-                **Features:** Label Smoothing, Layer Normalization, Mixed Precision
+                <div style="text-align: center; color: #6c757d; font-size: 0.85rem;">
+                Made with for educational purposes | Not for production use
+                </div>
             """)
 
             translate_btn.click(
                 self.translate,
                 inputs=[input_text, reference_text],
-                outputs=[output_text, info_text, candidates_text]
+                outputs=[output_text, info_text]
             )
 
-        print(f"Launching Gradio at http://0.0.0.0:7860")
-        demo.launch(share=share, server_name="0.0.0.0", server_port=7860)
-
+            print(f"Launching Gradio at http://0.0.0.0:7860")
+            demo.launch(share=share, server_name="0.0.0.0", server_port=7860)
 
 def main():
     """Entry point"""
-    config = Config.to_dict()
-
     app = TranslationApp(
-        model_path=f"{config["model_save_path"]}/bilstm_model.h5",
-        tokenizer_path=config["tokenizer_path"],
-        config=config
+        model_path=f"{Config.ARTIFACT_PATH}/bilstm/checkpoints/best_model.keras",
+        tokenizer_path=f"{Config.ARTIFACT_PATH}/tokenizers",
+        config=Config
     )
     app.launch(share=True)
 

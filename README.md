@@ -57,6 +57,7 @@ text
 
 ## 📁 Project Structure
 
+```bash
 machine-translation/
 ├── config/
 │ ├── init.py
@@ -106,7 +107,7 @@ machine-translation/
 ├── README.md # This file
 └── .gitignore # Git ignore
 
-text
+```
 
 ## 🚀 Quick Start
 

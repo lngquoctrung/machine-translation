@@ -22,7 +22,7 @@ class Config:
 
     # Learning rate schedule
     USE_LR_SCHEDULER = True              # Warmup + cosin decay
-    WARMUP_STEPS = 6000
+    WARMUP_STEPS = 8000
     TOTAL_STEPS = 100000
     MIN_LR = 1e-7
 
@@ -46,7 +46,7 @@ class Config:
 
     EMBEDDING_DIM = 64                   # To save memory
     LSTM_UNITS = 128                     # Hidden units
-    ATTENTION_HEADS = 5                  # Using multi-head for accuracy
+    ATTENTION_HEADS = 4                  # Using multi-head for accuracy
 
     # GPU settings
     USE_MIXED_PRECISION = True           # Save memory, increase training speed

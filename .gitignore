@@ -1,8 +1,11 @@
 .venv/
 .idea/
 models/
+artifacts
 **/__pycache__
+.gradio
+data
 
-README.md
-machine-translation.zip
+machine-translation-resource.zip
+machine-translation-project.ipynb
 02-model-training.*

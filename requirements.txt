@@ -1,0 +1,6 @@
+contractions==0.1.73
+gputil==1.4.0
+gradio==5.49.1
+matplotlib==3.10.7
+numpy==2.3.4
+tensorflow==2.20.0
