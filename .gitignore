@@ -3,8 +3,9 @@
 models/
 artifacts
 **/__pycache__
-.gradio
-data
+.gradio/
+data/
+logs/
 
 machine-translation-resource.zip
 machine-translation-project.ipynb

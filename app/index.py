@@ -211,8 +211,8 @@ class TranslationApp:
                 outputs=[output_text, info_text]
             )
 
-            print(f"Launching Gradio at http://0.0.0.0:7860")
-            demo.launch(share=share, server_name="0.0.0.0", server_port=7860)
+            print(f"Launching Gradio at http://0.0.0.0:7002")
+            demo.launch(share=share, server_name="0.0.0.0", server_port=7002)
 
 def main():
     """Entry point"""

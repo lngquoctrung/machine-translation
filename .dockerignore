@@ -1,0 +1,15 @@
+.github/
+.gradio/
+.idea/
+.git/
+.venv/
+artifacts/
+notebooks/
+data/
+
+.gitignore
+machine-translation-project.ipynb
+machine-translation-resource.zip
+main.py
+README.md
+requirements.dev.txt

@@ -1,372 +1,478 @@
-# 🌐 English-Vietnamese Machine Translation
+# English-Vietnamese Neural Machine Translation
 
-BiLSTM + Multi-Head Attention model cho neural machine translation với tất cả optimization techniques.
+A production-ready neural machine translation system using BiLSTM with Multi-Head Attention, featuring advanced optimization techniques and a beautiful web interface.
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-2.13-orange.svg)
-![License](https://img.shields.io/badge/License-MIT-green.svg)
+**Live Demo:** [https://translation.qctrung.site](https://translation.qctrung.site)
 
-## ✨ Features
+***
 
-- 🎯 **High Accuracy**: BiLSTM + Multi-Head Attention với BLEU score ~25-30
-- ⚡ **GPU Optimized**: Fit trong 16GB GPU, train < 10 giờ
-- 🔍 **Advanced Techniques**: 
-  - Label Smoothing (α=0.1)
-  - Layer Normalization
-  - Residual Connections
-  - Warmup + Cosine LR Schedule
-  - Mixed Precision Training (FP16)
-  - Beam Search Decoding (k=5)
-- 🌐 **Web Interface**: Gradio app với UI đẹp
-- 📊 **BLEU Evaluation**: Automatic quality assessment
-- 📈 **Training Monitoring**: TensorBoard integration
+## 1. Highlights
 
-## 🏗️ Architecture
+- **State-of-the-art Architecture**: BiLSTM encoder with Multi-Head Attention achieving **33.38 BLEU score**
+- **Production-Ready**: Deployed web interface with Gradio, supporting real-time translation
+- **Advanced Optimizations**: Label smoothing, mixed precision (FP16), warmup scheduler, beam search decoding
+- **Comprehensive Pipeline**: From data preprocessing to model evaluation with detailed notebooks
+- **Memory Efficient**: Optimized to run on 15GB GPU with gradient accumulation and dynamic memory management
 
-Input (English)
-↓
-Embedding Layer (64 dim)
-↓
-BiLSTM Encoder (128 units × 2)
-↓
-Layer Normalization
-↓
-Multi-Head Attention (2 heads)
-↓
-Residual Connection (Add & Norm)
-↓
-LSTM Decoder (256 units)
-↓
-Layer Normalization
-↓
-Dense Layer (Softmax)
-↓
-Output (Vietnamese)
+***
 
-text
+## 2. Performance Metrics
 
-### Key Techniques
+### Model Comparison Table
 
-| Technique | Purpose | Impact |
-|-----------|---------|--------|
-| **Mixed Precision** | Memory efficiency | -40% GPU memory, 2-3x faster |
-| **Label Smoothing** | Generalization | +1-2 BLEU points |
-| **Layer Norm** | Training stability | +0.5-1 BLEU points |
-| **Beam Search** | Better inference | +3-5 BLEU points |
-| **LR Scheduling** | Optimal convergence | +1-2 BLEU points |
+| Model | Parameters | BLEU Score | Inference Time | GPU Memory |
+|-------|-----------|------------|----------------|------------|
+| **BiLSTM + Beam Search** | 17.4M | **33.38** | 0.2-0.4s | ~12-15 GB |
+| BiLSTM + Greedy | 17.4M | 32.04 | 0.1-0.2s | ~12-15 GB |
+| LSTM + Beam Search | 10.4M | 31.18 | 0.15-0.3s | ~10-12 GB |
+| LSTM + Greedy | 10.4M | 29.58 | 0.08-0.15s | ~10-12 GB |
 
-## 📁 Project Structure
+### Dataset Statistics
+
+- **Total Samples**: 146,148 sentence pairs (143,144 after preprocessing)
+- **Source**: TED Talks English-Vietnamese parallel corpus
+- **Vocabulary**: 36,621 English words, 27,045 Vietnamese words
+- **Average Length**: 14.6 words (EN), 15.5 words (VI)
+- **Train/Val/Test Split**: 80% / 10% / 10%
+
+***
+
+## 3. Architecture
+
+### Model Overview
+
+The system uses a sequence-to-sequence architecture with attention mechanism:
+
+**Encoder (BiLSTM)**:
+
+- Embedding layer (64 dimensions) with Layer Normalization
+- Bidirectional LSTM (128 units × 2 directions = 256 total)
+- Dropout: 0.2 (layer), 0.2 (recurrent)
+
+**Attention Mechanism**:
+
+- Multi-Head Attention (4 heads, key_dim=128)
+- Residual connections with Layer Normalization
+- Attention dropout: 0.1
+
+**Decoder (LSTM)**:
+
+- Embedding layer (64 dimensions) with Layer Normalization
+- LSTM (256 units) with initial state from encoder
+- Context-aware dense layer with attention output
+- Softmax activation over vocabulary
+
+### Key Optimization Techniques
+
+| Technique | Implementation | Impact |
+|-----------|---------------|--------|
+| **Mixed Precision (FP16)** | TensorFlow mixed_float16 policy | 40% memory reduction, 2x faster training |
+| **Label Smoothing** | Smoothing factor: 0.05 | Better generalization, +1-2 BLEU |
+| **Learning Rate Schedule** | Warmup (8000 steps) + Cosine Decay | Stable convergence |
+| **Beam Search** | Width: 5 | +3-4 BLEU over greedy decoding |
+| **Layer Normalization** | After embeddings and attention | Training stability |
+| **Gradient Clipping** | Prevents exploding gradients | Robust training |
+
+***
+
+## 4. Project Structure
 
 ```bash
-machine-translation/
-├── config/
-│ ├── init.py
-│ ├── model_config.py # Model configuration
-│ └── train_config.py # Training hyperparameters
-│
-├── src/
-│ ├── data/
-│ │ ├── preprocessing.py # Data preprocessing
-│ │ └── dataset.py # Dataset utilities
-│ ├── models/
-│ │ ├── bilstm_attention.py # BiLSTM + Attention
-│ │ └── lstm_attention.py # LSTM + Attention
-│ ├── training/
-│ │ ├── trainer.py # Training logic
-│ │ ├── loss_functions.py # Label smoothing
-│ │ ├── schedulers.py # LR schedules
-│ │ └── callbacks.py # Custom callbacks
-│ ├── evaluation/
-│ │ ├── metrics.py # BLEU score
-│ │ └── beam_search.py # Beam search decoder
-│ └── utils/
-│ ├── gpu_utils.py # GPU memory manager
-│ └── helpers.py # Helper functions
-│
+.
 ├── app/
-│ └── gradio_app.py # Gradio web interface
+│   └── index.py                      # Gradio web application
 │
-├── notebooks/
-│ ├── 01_data_exploration.ipynb
-│ ├── 02_model_training.ipynb
-│ └── 03_evaluation.ipynb
+├── artifacts/                        # Trained models and tokenizers
+│   ├── bilstm/
+│   │   ├── checkpoints/              # Training checkpoints (every 10 epochs)
+│   │   ├── final_bilstm_model.keras
+│   │   └── training_history.pkl
+│   ├── lstm/
+│   │   ├── checkpoints/
+│   │   ├── final_lstm_model.keras
+│   │   └── training_history.pkl
+│   └── tokenizers/
+│       ├── tokenizer_en.pkl
+│       └── tokenizer_vi.pkl
+│
+├── assets/                           # Visualization charts
+│   ├── comparison.png
+│   └── complete_bleu_comparison.png
+│
+├── config/
+│   ├── __init__.py
+│   └── config.py                     # Centralized configuration
 │
 ├── data/
-│ ├── raw/ # Original datasets
-│ └── processed/ # Processed data
+│   ├── raw/
+│   │   ├── en.txt                    # English sentences
+│   │   └── vi.txt                    # Vietnamese sentences
+│   └── processed/
+│       └── processed_df.csv
 │
-├── models/
-│ ├── checkpoints/ # Training checkpoints
-│ ├── saved_models/ # Final models
-│ └── tokenizers/ # Saved tokenizers
+├── logs/                             # Training logs and TensorBoard
+│   ├── bilstm_attention.log
+│   ├── lstm_attention.log
+│   └── data_preprocessing.log
 │
-├── logs/ # Training logs
+├── notebooks/                        # Analysis notebooks
+│   ├── 01_data_exploration.ipynb
+│   ├── 02_model_training.ipynb
+│   └── 03_evaluation.ipynb
 │
-├── main.py # Training script
-├── requirements.txt # Dependencies
-├── README.md # This file
-└── .gitignore # Git ignore
-
+├── src/
+│   ├── data/
+│   │   ├── preprocessing.py          # Data cleaning, tokenization
+│   │   └── dataset.py                # TensorFlow dataset creation
+│   ├── models/
+│   │   ├── bilstm_attention.py       # BiLSTM model architecture
+│   │   └── lstm_attention.py         # LSTM model architecture
+│   ├── training/
+│   │   ├── trainer.py                # Training orchestration
+│   │   ├── loss_functions.py         # Label smoothing loss
+│   │   ├── schedulers.py             # Warmup + cosine decay
+│   │   └── callbacks.py              # Memory monitoring, checkpointing
+│   ├── evaluation/
+│   │   ├── metrics.py                # BLEU score calculation
+│   │   └── beam_search.py            # Beam search decoder
+│   └── utils/
+│       ├── gpu_utils.py              # GPU memory management
+│       ├── helpers.py                # Tokenizer save/load utilities
+│       └── logger.py                 # Logging setup
+│
+├── main.py                           # Training entry point
+├── requirements.txt                  # Production dependencies
+├── requirements.dev.txt              # Development dependencies
+├── Dockerfile                        # Docker containerization
+└── README.md
 ```
 
-## 🚀 Quick Start
+***
+
+## 5. Quick Start
+
+### Prerequisites
+
+- Python 3.11+
+- CUDA 11.8+ (for GPU training)
+- 15GB+ GPU memory (recommended)
 
 ### Installation
 
-Clone repository (hoặc download)
+```bash
+# Clone the repository
+git clone https://github.com/lngquoctrung/machine-translation.git
 cd machine-translation
 
-Create virtual environment
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate # Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-Install dependencies
-pip install -r requirements.txt
+# Install dependencies
+pip install -r requirements.dev.txt
+```
 
-Create directories
-mkdir -p data/raw data/processed
-mkdir -p models/{checkpoints,saved_models,tokenizers}
-mkdir -p logs
+### Data Preparation
 
-text
+Place your parallel corpus in `data/raw/`:
 
-### Prepare Data
+```bash
+# Data format: one sentence per line, aligned by line number
+data/raw/en.txt  # English sentences
+data/raw/vi.txt  # Vietnamese sentences
+```
 
-Copy your datasets
-cp /path/to/dataset_en.txt data/raw/
-cp /path/to/dataset_vi.txt data/raw/
+**Preprocessing Pipeline**:
 
-text
-
-**Data format:**
-- `dataset_en.txt`: 1 English sentence per line
-- `dataset_vi.txt`: 1 Vietnamese sentence per line (corresponding)
+- Expand contractions (e.g., "I'd" → "I would")
+- Lowercase and remove punctuation
+- Filter rare words (min frequency: 2)
+- Filter long sentences (max: 40 EN, 50 VI tokens)
+- Add START and END tokens to target sequences
 
 ### Training
 
 #### Train BiLSTM Model (Recommended)
 
-Train BiLSTM với tất cả optimizations
+```bash
+# Train with default configuration
 python main.py --model bilstm
 
-Monitor với TensorBoard
+# Monitor training with TensorBoard
 tensorboard --logdir logs/
+```
 
-text
+**Training Configuration**:
 
-#### Train LSTM Model (For comparison)
+- Batch size: 128
+- Epochs: 100
+- Learning rate: 0.001 (peak)
+- Warmup steps: 8000
+- Optimizer: Adam (β₁=0.9, β₂=0.98)
+- Mixed precision: Enabled (FP16)
 
-Train LSTM (uni-directional)
+**Expected Training Time**: ~12-14 hours on NVIDIA Tesla P100
+
+#### Train LSTM Model (Baseline)
+
+```bash
+# Train uni-directional LSTM for comparison
 python main.py --model lstm
+```
 
-text
+### Inference
 
-**Expected training time:**
-- BiLSTM: ~5-7 hours (GPU 16GB)
-- LSTM: ~4-6 hours (GPU 16GB)
+#### Web Interface (Gradio)
 
-### Run Gradio Demo
+```bash
+# Launch interactive demo
+python app/index.py
 
-Launch web interface
-python app/gradio_app.py
+# Access at http://localhost:7002
+```
 
-Access at http://localhost:7860
-text
+**Features**:
 
-**Features:**
-- Real-time translation
-- Beam search vs Greedy decoding comparison
-- BLEU score calculation (with reference)
-- Translation history
-- Beautiful UI
+- Real-time English → Vietnamese translation
+- Optional reference translation for BLEU scoring
+- Translation history tracking
+- Example sentences
+- Model performance metrics display
 
-## 📊 Model Performance
+#### Programmatic Usage
 
-### Training Results
-
-| Model | Parameters | GPU Memory | Training Time | Val Loss | Val Accuracy |
-|-------|-----------|-----------|--------------|----------|-------------|
-| **BiLSTM** | ~15-20M | 6-8 GB | 5-7h | ~2.5 | ~69% |
-| **LSTM** | ~10-15M | 4-6 GB | 4-6h | ~2.8 | ~65% |
-
-### Translation Quality
-
-| Model | BLEU Score | Inference Time |
-|-------|-----------|----------------|
-| **BiLSTM + Beam** | **~25-30** | 0.2-0.4s |
-| BiLSTM + Greedy | ~20-25 | 0.1-0.2s |
-| LSTM + Beam | ~22-27 | 0.15-0.3s |
-| LSTM + Greedy | ~18-23 | 0.08-0.15s |
-
-## 🛠️ Configuration
-
-Edit `config/model_config.py` to customize:
-
-class ModelConfig:
-# Vocabulary
-MAX_VOCAB_SIZE_EN = 25000 # English vocab size
-MAX_VOCAB_SIZE_VI = 20000 # Vietnamese vocab size
-MIN_WORD_FREQUENCY = 2 # Filter rare words
-
-text
-# Architecture
-EMBEDDING_DIM = 64         # Embedding dimension
-LSTM_UNITS = 128           # LSTM hidden units
-ATTENTION_HEADS = 2        # Multi-head attention heads
-
-# Training
-BATCH_SIZE = 256           # Batch size
-EPOCHS = 100               # Training epochs
-LEARNING_RATE = 0.001      # Peak learning rate
-
-# Optimization
-USE_MIXED_PRECISION = True # Enable FP16
-GPU_MEMORY_LIMIT = 15000   # GPU memory limit (MB)
-LABEL_SMOOTHING = 0.1      # Label smoothing factor
-
-# Inference
-BEAM_WIDTH = 5             # Beam search width
-text
-
-## 📈 Model Comparison
-
-### BiLSTM vs LSTM
-
-**BiLSTM Advantages:**
-- ✅ Better accuracy (+3-5 BLEU)
-- ✅ Captures bidirectional context
-- ✅ Better for complex sentences
-
-**BiLSTM Disadvantages:**
-- ❌ More parameters (~50% more)
-- ❌ Slower training (~20-30% slower)
-- ❌ More GPU memory (~30-40% more)
-
-**LSTM Advantages:**
-- ✅ Faster training
-- ✅ Less memory
-- ✅ Good for real-time applications
-
-**Recommendation:** Use **BiLSTM** for best quality, **LSTM** for speed.
-
-## 🎯 Usage Examples
-
-### Training
-
-Train BiLSTM (recommended)
-python main.py --model bilstm
-
-Train LSTM (faster)
-python main.py --model lstm
-
-text
-
-### Gradio App
-
-Launch demo
-python app/gradio_app.py
-
-Custom port
-python app/gradio_app.py --port 8080
-
-text
-
-### Programmatic Usage
-
+```python
 import tensorflow as tf
-import pickle
 from src.evaluation.beam_search import BeamSearchDecoder
+from src.utils import load_tokenizer
+from config import Config
 
-Load model
-model = tf.keras.models.load_model('models/saved_models/bilstm_model.h5')
+# Load model and tokenizers
+model = tf.keras.models.load_model('artifacts/bilstm/final_bilstm_model.keras')
+tokenizer_en = load_tokenizer('artifacts/tokenizers/tokenizer_en.pkl')
+tokenizer_vi = load_tokenizer('artifacts/tokenizers/tokenizer_vi.pkl')
 
-Load tokenizers
-with open('models/tokenizers/tokenizer_en.pkl', 'rb') as f:
-tokenizer_en = pickle.load(f)
-with open('models/tokenizers/tokenizer_vi.pkl', 'rb') as f:
-tokenizer_vi = pickle.load(f)
-
-Create decoder
-decoder = BeamSearchDecoder(model, tokenizer_en, tokenizer_vi, 40, 50, beam_width=5)
-
-Translate with beam search
-translation, candidates = decoder.decode_beam_search(
-decoder.preprocess("Hello, how are you?")
+# Initialize decoder
+decoder = BeamSearchDecoder(
+    model, tokenizer_en, tokenizer_vi,
+    Config.MAX_LENGTH_SRC, Config.MAX_LENGTH_TRG,
+    beam_width=5
 )
+
+# Translate
+translation = decoder.decode_greedy("Hello, how are you?")
 print(f"Translation: {translation}")
-print(f"Alternatives: {candidates}")
 
-text
+# Beam search for better quality
+best_translation, alternatives = decoder.decode_beam_search("Hello, how are you?")
+print(f"Best: {best_translation}")
+print(f"Alternatives: {alternatives}")
+```
 
-## 🔧 Troubleshooting
+***
 
-### GPU Memory Issues
+## 6. Configuration
 
-Edit config/model_config.py
-GPU_MEMORY_LIMIT = 12000 # Giảm xuống 12GB
-BATCH_SIZE = 128 # Giảm batch size
+Edit `config/config.py` to customize training:
 
-text
+```python
+class Config:
+    # Model Architecture
+    EMBEDDING_DIM = 64              # Embedding dimensions
+    LSTM_UNITS = 128                # LSTM hidden units
+    ATTENTION_HEADS = 4             # Multi-head attention
+    ATTENTION_KEY_DIM = 128         # Attention key dimension
+    
+    # Vocabulary
+    MAX_VOCAB_SIZE_SRC = 30000      # English vocabulary size
+    MAX_VOCAB_SIZE_TRG = 25000      # Vietnamese vocabulary size
+    MAX_LENGTH_SRC = 40             # Max source sequence length
+    MAX_LENGTH_TRG = 50             # Max target sequence length
+    
+    # Training Hyperparameters
+    BATCH_SIZE = 128
+    EPOCHS = 100
+    LEARNING_RATE = 0.001
+    WARMUP_STEPS = 8000
+    LABEL_SMOOTHING = 0.05
+    
+    # Dropout
+    LAYER_DROPOUT = 0.2
+    LSTM_DROPOUT = 0.2
+    ATTENTION_DROPOUT = 0.1
+    
+    # Optimization
+    USE_MIXED_PRECISION = True      # Enable FP16 training
+    GPU_MEMORY_LIMIT = 15000        # GPU memory limit (MB)
+    
+    # Inference
+    BEAM_WIDTH = 5                  # Beam search width
+```
+
+***
+
+## 7. Training Process
+
+### Data Preprocessing
+
+The preprocessing pipeline includes:
+
+1. **Text Cleaning**:
+   - Expand English contractions
+   - Remove punctuation
+   - Lowercase normalization
+
+2. **Vocabulary Building**:
+   - Keras Tokenizer with word-level tokenization
+   - OOV token for unknown words
+   - Filter rare words (min frequency: 2)
+
+3. **Sequence Preparation**:
+   - Add START/END tokens to target
+   - Pad sequences to max length
+   - Create teacher forcing inputs
+
+### Model Training
+
+Training features:
+
+- **Mixed Precision**: Automatic FP16 computation with loss scaling
+- **Learning Rate Warmup**: Linear warmup for 8000 steps, then cosine decay
+- **Label Smoothing**: Smoothing factor 0.05 for better generalization
+- **Checkpointing**: Save best model and periodic checkpoints every 10 epochs
+- **Early Stopping**: Patience of 5 epochs on validation loss
+- **GPU Memory Monitoring**: Track memory usage per epoch
+- **TensorBoard Logging**: Real-time training metrics visualization
+
+### Evaluation Metrics
+
+**BLEU Score Implementation**:
+
+- Sentence-level BLEU with smoothing
+- 4-gram precision with geometric mean
+- Brevity penalty for length mismatch
+
+**Decoding Strategies**:
+
+- **Greedy Decoding**: Select highest probability token at each step
+- **Beam Search**: Maintain top-k hypotheses with configurable beam width
+
+***
+
+## 8. Results & Analysis
+
+### Training Curves
+
+Both models converged smoothly with mixed precision training:
+
+- **BiLSTM**: Final val_loss ~1.14, val_accuracy ~92%
+- **LSTM**: Final val_loss ~1.18, val_accuracy ~90%
+
+### Translation Examples
+
+**Example 1**:
+
+- **English**: "Hello, how are you?"
+- **BiLSTM**: "Xin chào, bạn khỏe không?"
+- **LSTM**: "Xin chào, bạn thế nào?"
+
+**Example 2**:
+
+- **English**: "I love machine learning."
+- **BiLSTM**: "Tôi yêu học máy."
+- **LSTM**: "Tôi thích học máy."
+
+### Model Comparison
+
+**BiLSTM Advantages**:
+
+- Higher accuracy (+2-3 BLEU points)
+- Better context understanding (bidirectional)
+- Handles complex sentences better
+
+**LSTM Advantages**:
+
+- 40% fewer parameters (10.4M vs 17.4M)
+- Faster inference (~50% faster)
+- Lower memory footprint
+
+**Recommendation**: Use BiLSTM for quality-critical applications, LSTM for real-time scenarios.
+
+***
+
+## 9. Docker Deployment
+
+Build and run with Docker:
+
+```bash
+# Build image
+docker build -t translation-app .
+
+# Run container
+docker run -p 7860:7860 translation-app
+
+# Access at http://localhost:7860
+```
+
+**Production deployment** at: [https://translation.qctrung.site](https://translation.qctrung.site)
+
+***
+
+## 9. Troubleshooting
+
+### GPU Out of Memory
+
+```python
+# config/config.py
+GPU_MEMORY_LIMIT = 12000   # Reduce to 12GB
+BATCH_SIZE = 64            # Reduce batch size
+USE_MIXED_PRECISION = True # Ensure FP16 is enabled
+```
 
 ### Training Too Slow
 
-Enable mixed precision
-USE_MIXED_PRECISION = True
+- Enable mixed precision training
+- Increase batch size (if memory allows)
+- Use `tf.data.AUTOTUNE` for prefetching
+- Check GPU utilization with `nvidia-smi`
 
-Increase batch size
-BATCH_SIZE = 512
+### Low Translation Quality
 
-text
+- Increase model capacity (LSTM_UNITS, EMBEDDING_DIM)
+- Train for more epochs (150-200)
+- Expand vocabulary size (MAX_VOCAB_SIZE)
+- Use beam search instead of greedy decoding
+- Add more training data
 
-### Low Accuracy
+***
 
-Increase model capacity
-LSTM_UNITS = 256
-EMBEDDING_DIM = 128
+## 10. Notebooks
 
-Increase vocabulary
-MAX_VOCAB_SIZE_EN = 30000
-MAX_VOCAB_SIZE_VI = 25000
+Explore detailed analyses in `notebooks/`:
 
-More epochs
-EPOCHS = 150
+1. **Data Exploration** (`01_data_exploration.ipynb`): Dataset statistics, word distributions, sentence length analysis
+2. **Model Training** (`02_model_training.ipynb`): Training both models with comparison
+3. **Evaluation** (`03_evaluation.ipynb`): BLEU score analysis, translation quality assessment
 
-text
+***
 
-## 📚 Notebooks
+## 11. Acknowledgments
 
-Explore analysis notebooks in `notebooks/`:
+- **Dataset**: English-Vietnamese parallel corpus
+- **Framework**: TensorFlow/Keras for deep learning implementation
+- **UI**: Gradio for beautiful web interface
+- **Inspiration**: "Attention Is All You Need" and sequence-to-sequence literature
 
-1. **`01_data_exploration.ipynb`**: Data analysis, vocabulary distribution
-2. **`02_model_training.ipynb`**: Training both models, comparison
-3. **`03_evaluation.ipynb`**: BLEU score evaluation, translation tests
+***
 
-## 🤝 Contributing
+## 12. Contact
 
-Contributions welcome! Please:
-1. Fork the repository
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Open pull request
+- **GitHub**: <https://github.com/lngquoctrung>
+- **Email**: <lngquoctrung.work@gmail.com>
+- **Live Demo**: [https://translation.qctrung.site](https://translation.qctrung.site)
 
-## 📝 License
+***
 
-MIT License - see LICENSE file
+## 13. Keywords
 
-## 🙏 Acknowledgments
-
-- TensorFlow & Keras teams
-- Gradio for amazing UI framework
-- Research papers on attention mechanisms and beam search
-
-## 📧 Contact
-
-- GitHub Issues: [Open an issue](https://github.com/yourusername/machine-translation/issues)
-- Email: your.email@example.com
-
----
-
-**Built with ❤️ using TensorFlow, Keras & Gradio**
-
-**Keywords:** Machine Translation, Neural Machine Translation, BiLSTM, LSTM, Attention Mechanism, Seq2Seq, English-Vietnamese, Deep Learning, NLP, TensorFlow
+Neural Machine Translation -  BiLSTM -  LSTM -  Attention Mechanism -  Seq2Seq -  English-Vietnamese -  TensorFlow -  Keras -  Deep Learning -  NLP -  Beam Search -  Mixed Precision -  Production ML

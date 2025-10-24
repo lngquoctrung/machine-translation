@@ -10,4 +10,3 @@ jobs:
         name: Connect to VPS
         runs-on: ubuntu-latest
         
-    
