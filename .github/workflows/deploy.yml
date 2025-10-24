@@ -6,7 +6,11 @@ on:
             - production
 
 jobs:
-    setup:
-        name: Connect to VPS
+    build-push:
+        name: Build and push image to Docker Hub
         runs-on: ubuntu-latest
-        
+        steps:
+            - 
+                name: Checkout code
+                uses: actions/checkout@v3
+            
