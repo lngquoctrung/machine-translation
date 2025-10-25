@@ -217,7 +217,7 @@ class TranslationApp:
 def main():
     """Entry point"""
     app = TranslationApp(
-        model_path=f"{Config.ARTIFACT_PATH}/bilstm/checkpoints/best_model.keras",
+        model_path=f"{Config.ARTIFACT_PATH}/bilstm/final_bilstm_model.keras",
         tokenizer_path=f"{Config.ARTIFACT_PATH}/tokenizers",
         config=Config
     )
